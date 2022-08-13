@@ -5,15 +5,29 @@
   
 
   
-  <title>myth的小屋</title>
+  <title>用go实现sse | myth的小屋</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="myth的小屋">
-<meta property="og:url" content="https://kevinmythcheng.github.io/index.html">
+  <meta name="description" content="为什么要使用SSE:对于现在的互联网应用, 实时的消息推送是很常见的一种形式, (用户已经完全不能忍受一点点的延迟了) 但是大部分的场景, 其实我们基本都是用ajax 请求, 长轮训来实现, 或者也有同学使用websocket 等等技术,来实现 ajax请求这个是最常见的实现, 不断的初始化, 前端请求, 大概根据固定的时间不断的去请求, 看看是否数据准备成功 长轮训:下图是一个长轮训的示例  大">
+<meta property="og:type" content="article">
+<meta property="og:title" content="用go实现sse">
+<meta property="og:url" content="https://kevinmythcheng.github.io/2022/07/10/%E7%94%A8go%E5%AE%9E%E7%8E%B0sse/index.html">
 <meta property="og:site_name" content="myth的小屋">
+<meta property="og:description" content="为什么要使用SSE:对于现在的互联网应用, 实时的消息推送是很常见的一种形式, (用户已经完全不能忍受一点点的延迟了) 但是大部分的场景, 其实我们基本都是用ajax 请求, 长轮训来实现, 或者也有同学使用websocket 等等技术,来实现 ajax请求这个是最常见的实现, 不断的初始化, 前端请求, 大概根据固定的时间不断的去请求, 看看是否数据准备成功 长轮训:下图是一个长轮训的示例  大">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/1*m-FBYS8LqUwnUzniHzO8Xg.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/1*0w3tMXm7jr174bqOprcdOg.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/1*RWFAf6L6LYgd9kJaUxgmpQ.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20220807174750805.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20220807174926605.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20220807175146082.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20220807175325258.png">
+<meta property="og:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20220807175253932.png">
+<meta property="article:published_time" content="2022-07-10T13:33:52.000Z">
+<meta property="article:modified_time" content="2022-08-13T06:41:04.230Z">
 <meta property="article:author" content="Kevin Chenge">
+<meta property="article:tag" content="Go">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/1*m-FBYS8LqUwnUzniHzO8Xg.png">
   
     <link rel="alternate" href="/atom.xml" title="myth的小屋" type="application/atom+xml">
   
@@ -62,88 +76,7 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main">
-  
-    <article id="post-Typora使用cos" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2022/07/10/Typora%E4%BD%BF%E7%94%A8cos/" class="article-date">
-  <time datetime="2022-07-10T13:38:03.557Z" itemprop="datePublished">2022-07-10</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/%E5%B0%8F%E5%B7%A5%E5%85%B7/">小工具</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2022/07/10/Typora%E4%BD%BF%E7%94%A8cos/">Typora 配置图床</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="Typora-配置图床-使用腾讯云对象存储COS"><a href="#Typora-配置图床-使用腾讯云对象存储COS" class="headerlink" title="Typora 配置图床(使用腾讯云对象存储COS)"></a>Typora 配置图床(使用腾讯云对象存储COS)</h1><h2 id="前提条件"><a href="#前提条件" class="headerlink" title="前提条件"></a>前提条件</h2><ol>
-<li>typora 安装已经成功</li>
-<li>机子上面有node 或者yarn 可以安装 pic-Go</li>
-</ol>
-<h2 id="安装步骤"><a href="#安装步骤" class="headerlink" title="安装步骤"></a>安装步骤</h2><h3 id="1-下载-picGo-Core"><a href="#1-下载-picGo-Core" class="headerlink" title="1. 下载 picGo-Core"></a>1. 下载 picGo-Core</h3><blockquote>
-<p>yarn global add picgo</p>
-</blockquote>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101175236492.png" alt="image-20210101175236492"></p>
-<p>可以使用 which picgo 找到 picgo 的安装地址</p>
-<h3 id="2-配置腾讯云"><a href="#2-配置腾讯云" class="headerlink" title="2. 配置腾讯云"></a>2. 配置腾讯云</h3><h4 id="2-1-进入腾讯云-gt-对象存储-gt-创建存储桶"><a href="#2-1-进入腾讯云-gt-对象存储-gt-创建存储桶" class="headerlink" title="2.1 进入腾讯云 -&gt; 对象存储 -&gt; 创建存储桶"></a>2.1 进入腾讯云 -&gt; 对象存储 -&gt; 创建存储桶</h4><p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101175832654.png" alt="image-20210101175832654"></p>
-<h4 id="2-2-存储桶配置"><a href="#2-2-存储桶配置" class="headerlink" title="2.2 存储桶配置"></a>2.2 存储桶配置</h4><p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180004668.png" alt="image-20210101180004668"></p>
-<h4 id="2-3-密钥管理"><a href="#2-3-密钥管理" class="headerlink" title="2.3 密钥管理"></a>2.3 密钥管理</h4><p>控制台-&gt;访问管理-&gt;API密钥管理-&gt;创建子用户（为了安全起见）-&gt; 新建密钥 </p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180200469.png" alt="image-20210101180200469"></p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180409967.png" alt="image-20210101180409967"></p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180507648.png" alt="image-20210101180507648"></p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180553432.png" alt="image-20210101180553432"></p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180712384.png" alt="image-20210101180712384"></p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101180835164.png" alt="image-20210101180835164"></p>
-<h3 id="3-配置腾讯云cos-到picgo-core"><a href="#3-配置腾讯云cos-到picgo-core" class="headerlink" title="3. 配置腾讯云cos 到picgo-core"></a>3. 配置腾讯云cos 到picgo-core</h3><p>因为picgo默认是支持smms的， 所以我们先运行的命令， 会生成一个smms 的模版</p>
-<blockquote>
-<p>picgo set uploader</p>
-</blockquote>
-<p>然后之后就会在</p>
-<p>/Users/kevincheng/.picgo中出现</p>
-<p>如下所示</p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101193515485.png" alt="image-20210101193515485"></p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101203911068.png" alt="image-20210101203911068"></p>
-<p>这边使用的是v5版本</p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101202148317.png" alt="image-20210101202148317"></p>
-<h3 id="Typora-配置"><a href="#Typora-配置" class="headerlink" title="Typora 配置"></a>Typora 配置</h3><p>command 是 {node-path} {picgo-path} u</p>
-<p>node-path 可以根据 which node 得到</p>
-<p>Picgo-path 可以根据which picgo 得到</p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101203622732.png" alt="image-20210101203622732"></p>
-<h3 id="效果"><a href="#效果" class="headerlink" title="效果"></a>效果</h3><p>可以看到已经变到网络地址了</p>
-<p><img src="https://typora-1303153435.cos.ap-chengdu.myqcloud.com/img/image-20210101204852853.png" alt="image-20210101204852853"></p>
-<p>附录：</p>
-<p><a target="_blank" rel="noopener" href="https://picgo.github.io/PicGo-Doc/zh/guide/config.html#%E8%85%BE%E8%AE%AF%E4%BA%91">https://picgo.github.io/PicGo-Doc/zh/guide/config.html#腾讯云</a> cos</p>
-<p><a target="_blank" rel="noopener" href="https://support.typora.io/Upload-Image/#upload-automatically-when-insert-images">https://support.typora.io/Upload-Image/#upload-automatically-when-insert-images</a></p>
-<p><a target="_blank" rel="noopener" href="https://github.com/PicGo/PicGo-Core#use-in-cli">https://github.com/PicGo/PicGo-Core#use-in-cli</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://kevinmythcheng.github.io/2022/07/10/Typora%E4%BD%BF%E7%94%A8cos/" data-id="cl6rj50ce0001uzul1anhc24v" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-用go实现sse" class="article article-type-post" itemscope itemprop="blogPost">
+        <section id="main"><article id="post-用go实现sse" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2022/07/10/%E7%94%A8go%E5%AE%9E%E7%8E%B0sse/" class="article-date">
   <time datetime="2022-07-10T13:33:52.000Z" itemprop="datePublished">2022-07-10</time>
@@ -160,8 +93,8 @@
       <header class="article-header">
         
   
-    <h1 itemprop="name">
-      <a class="article-title" href="/2022/07/10/%E7%94%A8go%E5%AE%9E%E7%8E%B0sse/">用go实现sse</a>
+    <h1 class="article-title" itemprop="name">
+      用go实现sse
     </h1>
   
 
@@ -301,11 +234,23 @@
     </footer>
   </div>
   
-</article>
-
+    
+<nav id="article-nav">
+  
+    <a href="/2022/07/10/Typora%E4%BD%BF%E7%94%A8cos/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Typora 配置图床
+        
+      </div>
+    </a>
+  
+  
+</nav>
 
   
-
+</article>
 
 </section>
         
